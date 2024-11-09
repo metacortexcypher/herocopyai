@@ -1,27 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { useAction } from 'next-safe-action/hook'
 import { analyzeCopy } from './actions'
 
 export default function HeroCopyImprover() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState<any>(null)
+  const { execute, status } = useAction(analyzeCopy)
 
-  async function handleSubmit(event) {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setIsLoading(true)
-    setResult(null)
-
     const formData = new FormData(event.currentTarget)
-
-    try {
-      const response = await analyzeCopy(null, formData)
-      setResult(response)
-    } catch (error) {
-      console.error('Error in analyzeCopy:', error)
-      setResult({ error: 'An error occurred while processing your request.' })
-    } finally {
-      setIsLoading(false)
+    
+    const response = await execute(formData)
+    if (response.data) {
+      try {
+        const jsonResult = JSON.parse(response.data)
+        setResult(jsonResult)
+      } catch (error) {
+        console.error('Error parsing JSON:', error)
+        setResult({ error: 'Failed to parse result' })
+      }
     }
   }
 
@@ -38,20 +37,14 @@ export default function HeroCopyImprover() {
         />
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={status === 'executing'}
           className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          {isLoading ? 'Analyzing...' : 'Analyze'}
+          {status === 'executing' ? 'Analyzing...' : 'Analyze'}
         </button>
       </form>
 
-      {result?.error && (
-        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded">
-          Error: {result.error}
-        </div>
-      )}
-
-      {result && !result.error && (
+      {result && (
         <div className="mt-4">
           <h2 className="text-xl font-semibold mb-2">Analysis Result:</h2>
           <div className="bg-gray-100 p-4 rounded">
